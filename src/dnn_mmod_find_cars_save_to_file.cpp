@@ -1,26 +1,10 @@
 // The contents of this file are in the public domain. See LICENSE_FOR_EXAMPLE_PROGRAMS.txt
 /*
-    This example shows how to run a CNN based vehicle detector using dlib.  The
-    example loads a pretrained model and uses it to find the rear ends of cars in
-    an image.  We will also visualize some of the detector's processing steps by
-    plotting various intermediate images on the screen.  Viewing these can help
-    you understand how the detector works.
-
-    The model used by this example was trained by the dnn_mmod_train_find_cars_ex.cpp
-    example.  Also, since this is a CNN, you really should use a GPU to get the
-    best execution speed.  For instance, when run on a NVIDIA 1080ti, this detector
-    runs at 98fps when run on the provided test image.  That's more than an order
-    of magnitude faster than when run on the CPU.
-
-    Users who are just learning about dlib's deep learning API should read
-    the dnn_introduction_ex.cpp and dnn_introduction2_ex.cpp examples to learn
-    how the API works.  For an introduction to the object detection method you
-    should read dnn_mmod_ex.cpp.
-
-    You can also see some videos of this vehicle detector running on YouTube:
-        https://www.youtube.com/watch?v=4B3bzmxMAZU
-        https://www.youtube.com/watch?v=bP2SUo5vSlc
+    Based on examples/dnn_mmod_find_cars_ex.cpp
+    Modified to read video file, and save the cropped cars to file
 */
+// Usage: gdb --args ./dnn_mmod_find_cars_save_to_file ../datasets/mmod_rear_end_vehicle_detector.dat ../video/101634AA.MP4
+
 
 
 #include <dlib/opencv.h>
@@ -38,11 +22,27 @@ using namespace dlib;
 
 
 // The rear view vehicle detector network
+// con5d num_filter convolutions, 5x5 filter size, 2x2 stride
 template <long num_filters, typename SUBNET> using con5d = con<num_filters,5,5,2,2,SUBNET>;
+// con5 num_filter convolutions, 5x5 filter size, 1x1 stride
 template <long num_filters, typename SUBNET> using con5  = con<num_filters,5,5,1,1,SUBNET>;
-template <typename SUBNET> using downsampler  = relu<affine<con5d<32, relu<affine<con5d<32, relu<affine<con5d<16,SUBNET>>>>>>>>>;
+// I believe that the affine is a replacement for the batch normalization layers used during training.
+// I think affine simply adjusts the levels of the signal by applying the average mean and stndard deviation as corrections.
+// Activations leaving a batch normalization layer will have
+// approximately zero mean and unit variance (i.e., zero-centered).
+// See Starter Bundle 11.2.6
+template <typename SUBNET> using downsampler  = relu<affine<con5d<32,
+                                                relu<affine<con5d<32, 
+                                                relu<affine<con5d<16,
+                                                SUBNET>>>>>>>>>;
 template <typename SUBNET> using rcon5  = relu<affine<con5<55,SUBNET>>>;
-using net_type = loss_mmod<con<1,9,9,1,1,rcon5<rcon5<rcon5<downsampler<input_rgb_image_pyramid<pyramid_down<6>>>>>>>>;
+using net_type = loss_mmod<
+                 con<1,9,9,1,1,
+                 rcon5<
+                 rcon5<
+                 rcon5<
+                 downsampler<
+                 input_rgb_image_pyramid<pyramid_down<6>>>>>>>>;
 
 // ----------------------------------------------------------------------------------------
 

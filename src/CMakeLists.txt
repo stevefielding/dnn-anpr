@@ -33,10 +33,10 @@ add_subdirectory(../../../dlib/dlib-19.8 dlib_build)
 # To compile this program all you need to do is ask cmake.  You would type
 # these commands from within the directory containing this CMakeLists.txt
 # file:
-#   mkdir build
-#   cd build
-#   cmake ..
-#   cmake --build . --config Release
+# mkdir build
+# cd build
+# cmake  -DCMAKE_BUILD_TYPE=Debug  ../src
+# cmake --build . --config Debug
 #
 # The cmake .. command looks in the parent folder for a file named
 # CMakeLists.txt, reads it, sets up everything needed to build program.  Also,
@@ -54,15 +54,24 @@ add_subdirectory(../../../dlib/dlib-19.8 dlib_build)
 if (DLIB_NO_GUI_SUPPORT)
    message("No GUI support, so we won't build the webcam_face_pose_ex example.")
 else()
-   find_package(OpenCV QUIET)
+   # find_package(OpenCV QUIET)
+   find_package(OpenCV)
    if (OpenCV_FOUND)
       include_directories(${OpenCV_INCLUDE_DIRS})
 
       #add_executable(webcam_face_pose_ex webcam_face_pose_ex.cpp)
       add_executable(dnn_mmod_find_cars_save_to_file dnn_mmod_find_cars_save_to_file.cpp)
+      add_executable(test_simple test_simple.cpp)
+      add_executable(dnn_mmod_train_find_lplates dnn_mmod_train_find_lplates.cpp)
+      add_executable(dnn_mmod_simple_train_and_test dnn_mmod_simple_train_and_test.cpp)
+      add_executable(dnn_mmod_find_lplates_no_shape_pred dnn_mmod_find_lplates_no_shape_pred.cpp)
 
       #target_link_libraries(webcam_face_pose_ex dlib::dlib ${OpenCV_LIBS} )
       target_link_libraries(dnn_mmod_find_cars_save_to_file dlib::dlib ${OpenCV_LIBS} )
+      target_link_libraries(test_simple dlib::dlib ${OpenCV_LIBS} )
+      target_link_libraries(dnn_mmod_train_find_lplates dlib::dlib ${OpenCV_LIBS} )
+      target_link_libraries(dnn_mmod_simple_train_and_test dlib::dlib ${OpenCV_LIBS} )
+      target_link_libraries(dnn_mmod_find_lplates_no_shape_pred dlib::dlib ${OpenCV_LIBS} )
    else()
       message("OpenCV not found, so we won't build the webcam_face_pose_ex example.")
    endif()
