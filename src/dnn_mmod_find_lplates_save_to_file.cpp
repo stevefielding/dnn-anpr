@@ -15,6 +15,7 @@
 #include <dlib/image_io.h>
 #include <dlib/gui_widgets.h>
 #include <dlib/image_processing.h>
+#include <time.h>
 
 using namespace std;
 using namespace dlib;
@@ -49,7 +50,7 @@ using net_type = loss_mmod<
 int main(int argc, char **argv) try
 {
     if (argc != 3) {
-      cout << "Uage: dnn_mmod_find_cars_ex mmod_rear_end_vehicle_detector.dat mmod_cars_test_image.jpg\n";
+      cout << "Uage: dnn_mmod_find_lplates_save_to_file mmod_lplate_detector.dat ../video/101634AA.MP4\n";
       return -1;
     }
 
@@ -81,26 +82,25 @@ int main(int argc, char **argv) try
 #endif
 
     net_type net;
-    shape_predictor sp;
+
     // You can get this file from http://dlib.net/files/mmod_rear_end_vehicle_detector.dat.bz2
     // This network was produced by the dnn_mmod_train_find_cars_ex.cpp example program.
     // As you can see, the file also includes a separately trained shape_predictor.  To see
     // a generic example of how to train those refer to train_shape_predictor_ex.cpp.
-    //deserialize("mmod_rear_end_vehicle_detector.dat") >> net >> sp;
     cout << "[INFO] Loading the convNet and shape predictor" << endl;
-    deserialize(argv[1]) >> net >> sp;
+    deserialize(argv[1]) >> net;
 
-
-
-    //matrix<rgb_pixel> img;
-    // load_image(img, "../mmod_cars_test_image.jpg");
-    //load_image(img, argv[2]);
     image_window win;
 
     // Grab and process frames until the main window is closed by the user.
     cout << "[INFO] Processing the video frames" << endl;
-    int carCnt=0;
+    int plateCnt=0;
     int frameCnt=0;
+    rectangle rect_cur;
+    rectangle rect_prev(0,0);
+    time_t timeStart;
+    time(&timeStart);
+    time_t timeEnd;
     while(!win.is_closed()) {
 
       cv::Mat temp;
@@ -109,10 +109,14 @@ int main(int argc, char **argv) try
           break;
       }
       frameCnt++;
-      if (frameCnt % 10 == 0)
-        cout << "[INFO] Processed " << frameCnt << " frames. Found " << carCnt << " cars" << endl;
- 
-      if (frameCnt > 1090) {
+      if (frameCnt % 10 == 0) {
+        time(&timeEnd);
+        auto seconds = difftime(timeEnd,timeStart);
+        cout << "[INFO] Processed " << frameCnt << " frames. Found " << plateCnt << " LPs " << "in " << seconds << "s" << endl;
+        timeStart = timeEnd;
+      }
+      //if (frameCnt > 1090) {
+      if (frameCnt >= 0) {
         // cap >> temp;
         // Turn OpenCV's Mat into something dlib can deal with.  Note that this just
         // wraps the Mat object, it doesn't copy anything.  So cimg is only valid as
@@ -126,9 +130,6 @@ int main(int argc, char **argv) try
         matrix<rgb_pixel> cimg;
         assign_image(cimg, image);
   
-         //dlib::array2d<bgr_pixel> dlibImage;
-         //ib::assign_image(dlibImage, dlib::cv_image<bgr_pixel>(cvMatImage));
-  
   
   
         // Run the detector on the image and show us the output.
@@ -136,25 +137,23 @@ int main(int argc, char **argv) try
 
         for (auto&& d : net(cimg))
         {
-          // We use a shape_predictor to refine the exact shape and location of the detection
-          // box.  This shape_predictor is trained to simply output the 4 corner points of
-          // the box.  So all we do is make a rectangle that tightly contains those 4 points
-          // and that rectangle is our refined detection position.
-          auto fd = sp(cimg,d);
-          rectangle rect2;
-          matrix<rgb_pixel> roi;
-          rect2 = fd.get_rect();
-          string fname = "../out/car_" + to_string(frameCnt) + "_" + to_string(j++) + ".jpg";
-          roi = subm(cimg, rect2);
-          save_jpeg(roi,fname);
-          //win.set_image(cimg);
-          //win.add_overlay(rect2, rgb_pixel(255,0,0));
-          carCnt++;
+          rectangle rect_cur = d.rect;
+          auto myUnion = (rect_cur + rect_prev).area();
+          auto intersect = (rect_cur.intersect(rect_prev)).area();
+          float iou = (float) intersect / myUnion;
+          rect_prev = rect_cur;
+          if (intersect == 0) {
+            matrix<rgb_pixel> roi;
+            string fname = "../out/lplate_" + to_string(frameCnt) + "_" + to_string(j++) + ".jpg";
+            roi = subm(cimg, rect_cur);
+            save_jpeg(roi,fname);
+            plateCnt++;
+          }
         }
       }
     }
 
-    cout << "Found " << carCnt << " cars" << endl;
+    cout << "Found " << plateCnt << " cars" << endl;
     cout << "Hit enter to end program" << endl;
     cin.get();
 }
