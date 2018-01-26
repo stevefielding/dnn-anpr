@@ -8,6 +8,8 @@
         https://www.youtube.com/watch?v=bP2SUo5vSlc
 */
 // Build: cmake --build . --config Debug
+// Load NN weights from file. Read an image from file, detect the location of plates in the image using NN, 
+// and then crop the plates from the image and save the plate images to file
 
 #include <iostream>
 #include <dlib/dnn.h>
@@ -18,9 +20,7 @@
 using namespace std;
 using namespace dlib;
 
-
-
-// The rear view vehicle detector network
+// Lplate neywork, same as dlib example rear view vehicle detector network.
 template <long num_filters, typename SUBNET> using con5d = con<num_filters,5,5,2,2,SUBNET>;
 template <long num_filters, typename SUBNET> using con5  = con<num_filters,5,5,1,1,SUBNET>;
 template <typename SUBNET> using downsampler  = relu<affine<con5d<32, relu<affine<con5d<32, relu<affine<con5d<16,SUBNET>>>>>>>>>;
@@ -31,26 +31,19 @@ using net_type = loss_mmod<con<1,9,9,1,1,rcon5<rcon5<rcon5<downsampler<input_rgb
 
 int main(int argc, char **argv) try
 {
-	int plateCnt = 0;
-    net_type net;
-    // Load NN model and weights from file. Read image from file, detect plates, crop the plates 
-    // from the image and save to file
-
+    int plateCnt = 0;
     if (argc != 4) {
       cout << "ERROR: Must supply path to model file, input image filename, and output image filename prefix\n";
-      cout << "Eg:  ..datasets/mmod_lplate_detector.dat ../images/myImage.jpg  ../out/myImage_" << endl;
+      cout << "output image filename prefix will be suffixed with plate number and .jpg, eg 0.jpg" << endl;
+      cout << "USAGE:  ..datasets/mmod_lplate_detector.dat ../images/myImage.jpg  ../out/myImage_" << endl;
       return -1;
     }
 
-//#define INCLUDE_SHAPE_PRED
-#ifdef INCLUDE_SHAPE_PRED
-    shape_predictor sp;
-    deserialize("../datasets/mmod_rear_end_vehicle_detector.dat") >> net >> sp;
-#else
+    // Create net model and load the weights
+    net_type net;
     deserialize(argv[1]) >> net;
-#endif
 
-
+    // Load the image
     cout << "Loading: " << argv[2];
     matrix<rgb_pixel> img;
     load_image(img, argv[2]);
@@ -61,7 +54,7 @@ int main(int argc, char **argv) try
     win.set_image(img);
 #endif
 
-    // Run the detector on the image and show us the output.
+    // Run the detector on the image, show us the output, and save the cropped image to file.
     for (auto&& d : net(img))
     {
         rectangle rect = d.rect;
@@ -82,12 +75,12 @@ int main(int argc, char **argv) try
 catch(image_load_error& e)
 {
     cout << e.what() << endl;
-    cout << "The test image is located in the examples folder.  So you should run this program from a sub folder so that the relative path is correct." << endl;
+    cout << "The image failed to load." << endl;
 }
 catch(serialization_error& e)
 {
     cout << e.what() << endl;
-    cout << "The correct model file can be obtained from: http://dlib.net/files/mmod_rear_end_vehicle_detector.dat.bz2" << endl;
+    cout << "The model file is not correct" << endl;
 }
 catch(std::exception& e)
 {

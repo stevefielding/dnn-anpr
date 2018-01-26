@@ -19,7 +19,7 @@ args = vars(ap.parse_args())
 imagePaths = list(paths.list_images(args["inputPath"]))
 for imagePath in imagePaths:
   outPath = imagePath.split('/') [-1]
-  outPath = args["outputPath"] + '/' + ''.join(outPath.split('.')[:-1]) + "_"
+  outPath = args["outputPath"] + '/' + ''.join(outPath.split('.')[:-1])
   #print (outPath)
   os.system("{} {} {} {}".format(args["app"], args["model"], imagePath, outPath))
 
